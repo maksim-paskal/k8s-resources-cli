@@ -39,7 +39,7 @@ const (
 	bytesUnit = 1000
 )
 
-func Get(container, namespace string) (*Requests, error) { //nolint:funlen
+func Get(container, namespace string) (*Requests, error) { //nolint:funlen,cyclop
 	limitsStrategy, err := types.ParseStrategyType(*config.Get().LimitsStrategy)
 	if err != nil {
 		return nil, errors.Wrap(err, "error parsing strategy")

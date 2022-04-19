@@ -22,7 +22,7 @@ import (
 func TestConfig(t *testing.T) {
 	t.Parallel()
 
-	if err := flag.Set("namespace", "test"); err != nil {
+	if err := flag.Set("config", "testdata/config.yaml"); err != nil {
 		t.Fatal(err)
 	}
 
@@ -30,7 +30,11 @@ func TestConfig(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if *config.Get().Namespace != "test" {
+	if err := config.Load(); err != nil {
+		t.Fatal(err)
+	}
+
+	if *config.Get().Namespace != "abcd" {
 		t.Fatalf("expected namespace to be test, got %s", *config.Get().Namespace)
 	}
 

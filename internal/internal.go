@@ -13,13 +13,117 @@ limitations under the License.
 package internal
 
 import (
+	"bytes"
+	"encoding/json"
+	"fmt"
+	"io/ioutil"
+	"os"
+	"sort"
+	"strconv"
+	"strings"
+	"text/tabwriter"
+
 	"github.com/maksim-paskal/k8s-resources-cli/pkg/api"
+	"github.com/maksim-paskal/k8s-resources-cli/pkg/config"
 	"github.com/pkg/errors"
+	log "github.com/sirupsen/logrus"
 )
 
-func Run() error {
-	if err := api.PrintResources(); err != nil {
-		return errors.Wrap(err, "errors in application")
+func Run() error { //nolint:funlen,cyclop
+	pods, err := api.GetPods()
+	if err != nil {
+		return err //nolint:wrapcheck
+	}
+
+	var b bytes.Buffer
+	w := tabwriter.NewWriter(&b, 0, 0, 1, ' ', tabwriter.Debug)
+
+	header := []string{
+		"PodName",
+		"ContainerName",
+		"MemoryRequest",
+		"MemoryLimit",
+		"CPURequest",
+		"CPULimit",
+	}
+
+	if *config.Get().ShowQoS {
+		header = append(header, "QoS")
+	}
+
+	if *config.Get().ShowSafeToEvict {
+		header = append(header, "SafeToEvict")
+	}
+
+	if *config.Get().ShowDebugJSON {
+		header = append(header, "Debug")
+	}
+
+	fmt.Fprintln(w, strings.Join(header, "\t"))
+
+	const separatorString = "------"
+
+	separator := make([]string, len(header))
+	for i := range header {
+		separator[i] = "------"
+	}
+
+	fmt.Fprintln(w, strings.Join(separator, "\t"))
+
+	if len(pods) == 0 {
+		return errors.New("no pods found")
+	}
+
+	sort.Slice(pods, func(i, j int) bool {
+		return pods[i].PodName < pods[j].PodName
+	})
+
+	for _, result := range pods {
+		item := make([]string, 0)
+
+		if len(*config.Get().PrometheusURL) > 0 {
+			result.MemoryRequest = fmt.Sprintf("%s / %s", result.MemoryRequest, result.Recommend.MemoryRequest)
+			result.MemoryLimit = fmt.Sprintf("%s / %s", result.MemoryLimit, result.Recommend.MemoryLimit)
+			result.CPURequest = fmt.Sprintf("%s / %s", result.CPURequest, result.Recommend.CPURequest)
+			result.CPULimit = fmt.Sprintf("%s / %s", result.CPULimit, result.Recommend.CPULimit)
+		}
+
+		item = append(item, result.PodName)
+		item = append(item, result.ContainerName)
+		item = append(item, result.MemoryRequest)
+		item = append(item, result.MemoryLimit)
+		item = append(item, result.CPURequest)
+		item = append(item, result.CPULimit)
+
+		if *config.Get().ShowQoS {
+			item = append(item, result.QoS)
+		}
+
+		if *config.Get().ShowSafeToEvict {
+			item = append(item, strconv.FormatBool(result.SafeToEvict))
+		}
+
+		if *config.Get().ShowDebugJSON {
+			info, err := json.Marshal(result)
+			if err != nil {
+				return errors.Wrap(err, "error marshalling result")
+			}
+
+			item = append(item, string(info))
+		}
+
+		fmt.Fprintln(w, strings.Join(item, "\t"))
+	}
+
+	w.Flush()
+
+	fmt.Println(b.String()) //nolint:forbidigo
+
+	const filePermission = 0o755
+
+	err = ioutil.WriteFile("result.txt", b.Bytes(), os.FileMode(filePermission))
+	if err != nil {
+		log.WithError(err).Error("error writing result to file")
 	}
 
 	return nil

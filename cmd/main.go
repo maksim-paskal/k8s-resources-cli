@@ -39,6 +39,14 @@ func main() {
 		os.Exit(0)
 	}
 
+	if err := config.Load(); err != nil {
+		log.WithError(err).Fatal("error loading config")
+	}
+
+	if err := config.Check(); err != nil {
+		log.WithError(err).Fatal("error in config")
+	}
+
 	log.Debugf("using config:\n%s", config.Get().String())
 
 	if err := api.Init(); err != nil {

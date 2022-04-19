@@ -13,14 +13,17 @@ limitations under the License.
 package api
 
 import (
+	"bytes"
 	"context"
 	"fmt"
-	"os"
+	"html/template"
 	"strings"
-	"text/tabwriter"
 
+	"github.com/cheggaaa/pb"
 	"github.com/maksim-paskal/k8s-resources-cli/pkg/config"
+	"github.com/maksim-paskal/k8s-resources-cli/pkg/recomender"
 	"github.com/pkg/errors"
+	log "github.com/sirupsen/logrus"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
@@ -56,64 +59,81 @@ func Init() error {
 	return nil
 }
 
-func PrintResources() error { //nolint: funlen,cyclop
+type GetPodResult struct {
+	PodName       string
+	ContainerName string
+	Namespace     string
+	MemoryRequest string
+	MemoryLimit   string
+	CPURequest    string
+	CPULimit      string
+	QoS           string
+	SafeToEvict   bool
+	Recommend     *recomender.Requests
+}
+
+func GetPods() ([]*GetPodResult, error) { //nolint: funlen,cyclop,gocognit
 	ctx := context.Background()
 
-	pods, err := clientset.CoreV1().Pods(*config.Get().Namespace).List(ctx, metav1.ListOptions{})
+	pods, err := clientset.CoreV1().Pods(*config.Get().Namespace).List(ctx, metav1.ListOptions{
+		LabelSelector: *config.Get().PodLabelSelector,
+	})
 	if err != nil {
-		return errors.Wrap(err, "error get pods")
+		return nil, errors.Wrap(err, "error get pods")
 	}
 
 	if len(pods.Items) == 0 {
-		return errors.New("no pods found")
+		return nil, errors.New("no pods found")
 	}
 
-	podsFound := 0
-	w := tabwriter.NewWriter(os.Stdout, 0, 0, 1, ' ', 0)
-	// defer w.Flush()
+	bar := pb.New(len(pods.Items))
 
-	header := []string{
-		"Pod",
-		"Container",
-		"MemoryRequest",
-		"MemoryLimit",
-		"CPURequest",
-		"CPULimit",
+	showBar := log.GetLevel() < log.DebugLevel && len(*config.Get().PrometheusURL) > 0
+
+	if showBar {
+		bar.Start()
 	}
 
-	if *config.Get().ShowQoS {
-		header = append(header, "QoS")
-	}
-
-	fmt.Fprintln(w, strings.Join(header, "\t"))
-
-	const separatorString = "------"
-
-	separator := make([]string, len(header))
-	for i := range header {
-		separator[i] = "------"
-	}
+	results := make([]*GetPodResult, 0)
 
 	for _, pod := range pods.Items {
 		for _, container := range pod.Spec.Containers {
-			podName := pod.Name
+			item := GetPodResult{
+				PodName:       pod.Name,
+				ContainerName: container.Name,
+				Namespace:     pod.Namespace,
+				MemoryRequest: container.Resources.Requests.Memory().String(),
+				MemoryLimit:   container.Resources.Limits.Memory().String(),
+				CPURequest:    container.Resources.Requests.Cpu().String(),
+				CPULimit:      container.Resources.Limits.Cpu().String(),
+				QoS:           string(pod.Status.QOSClass),
+				SafeToEvict:   false,
+			}
 
 			if len(*config.Get().Namespace) == 0 {
-				podName = fmt.Sprintf("%s/%s", pod.Namespace, pod.Name)
+				item.PodName = fmt.Sprintf("%s/%s", pod.Namespace, pod.Name)
+			}
+
+			if pod.Annotations["cluster-autoscaler.kubernetes.io/safe-to-evict"] == "false" {
+				item.SafeToEvict = true
 			}
 
 			showResult := false
-			result := make([]string, len(header))
 
-			result[0] = podName
-			result[1] = container.Name
-			result[2] = container.Resources.Requests.Memory().String()
-			result[3] = container.Resources.Limits.Memory().String()
-			result[4] = container.Resources.Requests.Cpu().String()
-			result[5] = container.Resources.Limits.Cpu().String()
+			if len(*config.Get().Filter) > 0 {
+				showResult, err = filterResult(item)
+				if err != nil {
+					return nil, errors.Wrap(err, "error filtering result")
+				}
+			}
 
-			if *config.Get().ShowQoS {
-				result[6] = string(pod.Status.QOSClass)
+			if len(*config.Get().PrometheusURL) > 0 {
+				recommend, err := recomender.Get(item.ContainerName, item.Namespace)
+				if err != nil {
+					return nil, errors.Wrap(err, "error get metrics")
+				}
+
+				item.Recommend = recommend
 			}
 
 			if *config.Get().NoMemoryRequest && container.Resources.Requests.Memory().IsZero() {
@@ -124,22 +144,60 @@ func PrintResources() error { //nolint: funlen,cyclop
 				showResult = true
 			}
 
-			if !*config.Get().NoMemoryRequest && !*config.Get().NoCPURequest {
+			if !*config.Get().NoMemoryRequest && !*config.Get().NoCPURequest && len(*config.Get().Filter) == 0 {
 				showResult = true
 			}
 
 			if showResult {
-				fmt.Fprintln(w, strings.Join(result, "\t"))
-				podsFound++
+				results = append(results, &item)
 			}
+		}
+
+		bar.Increment()
+	}
+
+	if showBar {
+		bar.Finish()
+	}
+
+	return results, nil
+}
+
+const conditionParts = 2
+
+func filterResult(item GetPodResult) (bool, error) {
+	conditions := strings.Split(*config.Get().Filter, ",")
+	for _, condition := range conditions {
+		eq := strings.Split(condition, "==")
+		if len(eq) != conditionParts {
+			return false, errors.Errorf("invalid filter condition: %s", condition)
+		}
+
+		value, err := templateItem(eq[0], item)
+		if err != nil {
+			return false, errors.Wrap(err, "error template item")
+		}
+
+		if value == eq[1] {
+			return true, nil
 		}
 	}
 
-	if podsFound == 0 {
-		return errors.New("no pods found")
+	return false, nil
+}
+
+func templateItem(value string, item GetPodResult) (string, error) {
+	tmpl, err := template.New("test").Parse(fmt.Sprintf("{{ %s }}", value))
+	if err != nil {
+		return "", errors.Wrap(err, "error parsing filter")
 	}
 
-	w.Flush()
+	var tpl bytes.Buffer
 
-	return nil
+	err = tmpl.Execute(&tpl, item)
+	if err != nil {
+		return "", errors.Wrap(err, "error executing filter")
+	}
+
+	return tpl.String(), nil
 }

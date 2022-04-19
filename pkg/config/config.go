@@ -19,7 +19,6 @@ import (
 
 	"github.com/maksim-paskal/k8s-resources-cli/pkg/types"
 	"github.com/pkg/errors"
-	log "github.com/sirupsen/logrus"
 	"gopkg.in/yaml.v2"
 )
 
@@ -76,11 +75,13 @@ var appConfig = &AppConfig{
 }
 
 func Load() error {
+	if len(*appConfig.ConfigFile) == 0 {
+		return nil
+	}
+
 	configByte, err := ioutil.ReadFile(*appConfig.ConfigFile)
 	if err != nil {
-		log.Debug(err)
-
-		return nil
+		return errors.Wrapf(err, "error opening config %s", *appConfig.ConfigFile)
 	}
 
 	err = yaml.Unmarshal(configByte, &appConfig)

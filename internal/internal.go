@@ -81,7 +81,7 @@ func Run() error { //nolint:funlen,cyclop
 	for _, result := range pods {
 		item := make([]string, 0)
 
-		if len(*config.Get().PrometheusURL) > 0 {
+		if result.Recommend != nil {
 			result.MemoryRequest = fmt.Sprintf("%s / %s", result.MemoryRequest, result.Recommend.MemoryRequest)
 			result.MemoryLimit = fmt.Sprintf("%s / %s", result.MemoryLimit, result.Recommend.MemoryLimit)
 			result.CPURequest = fmt.Sprintf("%s / %s", result.CPURequest, result.Recommend.CPURequest)

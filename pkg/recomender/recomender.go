@@ -39,7 +39,19 @@ const (
 	bytesUnit = 1000
 )
 
+// nolint:gochecknoglobals
+var recomendationCache = make(map[string]*Requests)
+
 func Get(container, namespace string) (*Requests, error) { //nolint:funlen,cyclop
+	key := fmt.Sprintf("%s:%s", container, namespace)
+
+	// check for recomendation in cache
+	if _, ok := recomendationCache[key]; ok {
+		log.Debugf("recomendation found in cache key=%s", key)
+
+		return recomendationCache[key], nil
+	}
+
 	limitsStrategy, err := types.ParseStrategyType(*config.Get().LimitsStrategy)
 	if err != nil {
 		return nil, errors.Wrap(err, "error parsing strategy")
@@ -112,6 +124,9 @@ func Get(container, namespace string) (*Requests, error) { //nolint:funlen,cyclo
 
 		result.CPULimit = strings.ReplaceAll(b, ".00", "")
 	}
+
+	// add result in cache
+	recomendationCache[key] = &result
 
 	return &result, nil
 }

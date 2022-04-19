@@ -86,14 +86,6 @@ func GetPods() ([]*GetPodResult, error) { //nolint: funlen,cyclop,gocognit
 		return nil, errors.New("no pods found")
 	}
 
-	bar := pb.New(len(pods.Items))
-
-	showBar := log.GetLevel() < log.DebugLevel && len(*config.Get().PrometheusURL) > 0
-
-	if showBar {
-		bar.Start()
-	}
-
 	results := make([]*GetPodResult, 0)
 
 	for _, pod := range pods.Items {
@@ -127,15 +119,6 @@ func GetPods() ([]*GetPodResult, error) { //nolint: funlen,cyclop,gocognit
 				}
 			}
 
-			if len(*config.Get().PrometheusURL) > 0 {
-				recommend, err := recomender.Get(item.ContainerName, item.Namespace)
-				if err != nil {
-					return nil, errors.Wrap(err, "error get metrics")
-				}
-
-				item.Recommend = recommend
-			}
-
 			if *config.Get().NoMemoryRequest && container.Resources.Requests.Memory().IsZero() {
 				showResult = true
 			}
@@ -152,6 +135,35 @@ func GetPods() ([]*GetPodResult, error) { //nolint: funlen,cyclop,gocognit
 				results = append(results, &item)
 			}
 		}
+	}
+
+	if err := calculateRecomendations(results); err != nil {
+		return nil, errors.Wrap(err, "error adding recommendations")
+	}
+
+	return results, nil
+}
+
+func calculateRecomendations(results []*GetPodResult) error {
+	if len(*config.Get().PrometheusURL) == 0 {
+		return nil
+	}
+
+	bar := pb.New(len(results))
+
+	showBar := log.GetLevel() < log.DebugLevel
+
+	if showBar {
+		bar.Start()
+	}
+
+	for i, result := range results {
+		recommend, err := recomender.Get(result.ContainerName, result.Namespace)
+		if err != nil {
+			return errors.Wrap(err, "error get metrics")
+		}
+
+		results[i].Recommend = recommend
 
 		bar.Increment()
 	}
@@ -160,7 +172,7 @@ func GetPods() ([]*GetPodResult, error) { //nolint: funlen,cyclop,gocognit
 		bar.Finish()
 	}
 
-	return results, nil
+	return nil
 }
 
 const conditionParts = 2

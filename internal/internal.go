@@ -30,7 +30,7 @@ import (
 )
 
 func Run() error { //nolint:funlen,cyclop
-	pods, err := api.GetPods()
+	pods, err := api.GetPodResources()
 	if err != nil {
 		return err //nolint:wrapcheck
 	}

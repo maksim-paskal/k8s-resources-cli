@@ -22,6 +22,7 @@ import (
 	"github.com/cheggaaa/pb"
 	"github.com/maksim-paskal/k8s-resources-cli/pkg/config"
 	"github.com/maksim-paskal/k8s-resources-cli/pkg/recomender"
+	"github.com/maksim-paskal/k8s-resources-cli/pkg/types"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -59,24 +60,12 @@ func Init() error {
 	return nil
 }
 
-type GetPodResult struct {
-	PodName       string
-	ContainerName string
-	Namespace     string
-	MemoryRequest string
-	MemoryLimit   string
-	CPURequest    string
-	CPULimit      string
-	QoS           string
-	SafeToEvict   bool
-	Recommend     *recomender.Requests
-}
-
-func GetPods() ([]*GetPodResult, error) { //nolint: funlen,cyclop,gocognit
+func GetPodResources() ([]*types.PodResources, error) { //nolint: funlen,cyclop,gocognit
 	ctx := context.Background()
 
 	pods, err := clientset.CoreV1().Pods(*config.Get().Namespace).List(ctx, metav1.ListOptions{
 		LabelSelector: *config.Get().PodLabelSelector,
+		FieldSelector: "status.phase=Running",
 	})
 	if err != nil {
 		return nil, errors.Wrap(err, "error get pods")
@@ -86,12 +75,13 @@ func GetPods() ([]*GetPodResult, error) { //nolint: funlen,cyclop,gocognit
 		return nil, errors.New("no pods found")
 	}
 
-	results := make([]*GetPodResult, 0)
+	results := make([]*types.PodResources, 0)
 
 	for _, pod := range pods.Items {
 		for _, container := range pod.Spec.Containers {
-			item := GetPodResult{
+			item := types.PodResources{
 				PodName:       pod.Name,
+				PodTemplate:   pod.GenerateName,
 				ContainerName: container.Name,
 				Namespace:     pod.Namespace,
 				MemoryRequest: container.Resources.Requests.Memory().String(),
@@ -144,7 +134,7 @@ func GetPods() ([]*GetPodResult, error) { //nolint: funlen,cyclop,gocognit
 	return results, nil
 }
 
-func calculateRecomendations(results []*GetPodResult) error {
+func calculateRecomendations(results []*types.PodResources) error {
 	if len(*config.Get().PrometheusURL) == 0 {
 		return nil
 	}
@@ -158,7 +148,7 @@ func calculateRecomendations(results []*GetPodResult) error {
 	}
 
 	for i, result := range results {
-		recommend, err := recomender.Get(result.ContainerName, result.Namespace)
+		recommend, err := recomender.Get(result)
 		if err != nil {
 			return errors.Wrap(err, "error get metrics")
 		}
@@ -177,7 +167,7 @@ func calculateRecomendations(results []*GetPodResult) error {
 
 const conditionParts = 2
 
-func filterResult(item GetPodResult) (bool, error) {
+func filterResult(item types.PodResources) (bool, error) {
 	conditions := strings.Split(*config.Get().Filter, ",")
 	for _, condition := range conditions {
 		eq := strings.Split(condition, "==")
@@ -198,7 +188,7 @@ func filterResult(item GetPodResult) (bool, error) {
 	return false, nil
 }
 
-func templateItem(value string, item GetPodResult) (string, error) {
+func templateItem(value string, item types.PodResources) (string, error) {
 	tmpl, err := template.New("test").Parse(fmt.Sprintf("{{ %s }}", value))
 	if err != nil {
 		return "", errors.Wrap(err, "error parsing filter")

@@ -10,12 +10,12 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 */
-package recomender_test
+package utils_test
 
 import (
 	"testing"
 
-	"github.com/maksim-paskal/k8s-resources-cli/pkg/recomender"
+	"github.com/maksim-paskal/k8s-resources-cli/pkg/utils"
 	"k8s.io/apimachinery/pkg/api/resource"
 )
 
@@ -35,7 +35,7 @@ func TestMbToString(t *testing.T) {
 	tests[140000000] = "140Mi"
 
 	for in, want := range tests {
-		got := recomender.ByteCountSI(in)
+		got := utils.ByteCountSI(in)
 
 		// test that kubertnetes can parse this string
 		_, err := resource.ParseQuantity(got)

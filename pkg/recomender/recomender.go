@@ -64,7 +64,7 @@ func Get(pod *types.PodResources) (*types.Recomendations, error) { //nolint:funl
 			return nil, errors.New("no pod template value")
 		}
 
-		cacheKey = fmt.Sprintf("%s,%s:%s", pod.PodTemplate, pod.ContainerName, pod.Namespace)
+		cacheKey = fmt.Sprintf("%s:%s:%s", pod.PodTemplate, pod.ContainerName, pod.Namespace)
 		metricsExtra += fmt.Sprintf(`,pod=~"%s.+"`, pod.PodTemplate)
 	}
 

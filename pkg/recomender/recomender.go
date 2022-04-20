@@ -20,6 +20,7 @@ import (
 
 	"github.com/maksim-paskal/k8s-resources-cli/pkg/config"
 	"github.com/maksim-paskal/k8s-resources-cli/pkg/types"
+	"github.com/maksim-paskal/k8s-resources-cli/pkg/utils"
 	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/api"
 	v1 "github.com/prometheus/client_golang/api/prometheus/v1"
@@ -28,50 +29,61 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-type Requests struct {
-	MemoryRequest string
-	MemoryLimit   string
-	CPURequest    string
-	CPULimit      string
-}
-
-const (
-	bytesUnit = 1000
-)
-
 // nolint:gochecknoglobals
-var recomendationCache = make(map[string]*Requests)
+var recomendationCache = make(map[string]*types.Recomendations)
 
-func Get(container, namespace string) (*Requests, error) { //nolint:funlen,cyclop
-	key := fmt.Sprintf("%s:%s", container, namespace)
-
-	// check for recomendation in cache
-	if _, ok := recomendationCache[key]; ok {
-		log.Debugf("recomendation found in cache key=%s", key)
-
-		return recomendationCache[key], nil
-	}
-
+func Get(pod *types.PodResources) (*types.Recomendations, error) { //nolint:funlen,cyclop
 	limitsStrategy, err := types.ParseStrategyType(*config.Get().LimitsStrategy)
 	if err != nil {
 		return nil, errors.Wrap(err, "error parsing strategy")
 	}
 
+	collectorType, err := types.ParseCollectorType(*config.Get().CollectorType)
+	if err != nil {
+		return nil, errors.Wrap(err, "error parsing collector type")
+	}
+
+	cacheKey := fmt.Sprintf("%s:%s", pod.ContainerName, pod.Namespace)
+
 	metricsExtra := ""
 
+	// extra fields
 	if len(*config.Get().PrometheusGroupField) > 0 {
-		metricsExtra = fmt.Sprintf(`,%s=~"%s"`, *config.Get().PrometheusGroupField, *config.Get().PrometheusGroupValue)
+		metricsExtra += fmt.Sprintf(`,%s=~"%s"`, *config.Get().PrometheusGroupField, *config.Get().PrometheusGroupValue)
+	}
+
+	// search by pod name
+	if collectorType == types.CollectorTypePod {
+		cacheKey = fmt.Sprintf("%s,%s:%s", pod.PodName, pod.ContainerName, pod.Namespace)
+		metricsExtra += fmt.Sprintf(`,pod="%s"`, pod.PodName)
+	}
+
+	// search by pod template name
+	if collectorType == types.CollectorTypePodTemplate {
+		if len(pod.PodTemplate) == 0 {
+			return nil, errors.New("no pod template value")
+		}
+
+		cacheKey = fmt.Sprintf("%s,%s:%s", pod.PodTemplate, pod.ContainerName, pod.Namespace)
+		metricsExtra += fmt.Sprintf(`,pod=~"%s.+"`, pod.PodTemplate)
+	}
+
+	// check for recomendation in cache
+	if _, ok := recomendationCache[cacheKey]; ok {
+		log.Debugf("recomendation found in cache key=%s", cacheKey)
+
+		return recomendationCache[cacheKey], nil
 	}
 
 	// requests = 50 percentile of resource usage
 	// limits (conservate) = max resource usage
 	// limits (aggressive) = 99 percentile of resource usage
-	memoryRequestQuery := fmt.Sprintf(`max(quantile_over_time(0.50,container_memory_working_set_bytes{container="%s",namespace="%s"%s}[%s]))`, container, namespace, metricsExtra, *config.Get().PrometheusHorizont)                 //nolint:lll
-	memoryLimitQueryAggresive := fmt.Sprintf(`max(quantile_over_time(0.99,container_memory_working_set_bytes{container="%s",namespace="%s"%s}[%s]))`, container, namespace, metricsExtra, *config.Get().PrometheusHorizont)          //nolint:lll
-	memoryLimitQueryConservate := fmt.Sprintf(`max(max_over_time(container_memory_working_set_bytes{container="%s",namespace="%s"%s}[%s]))`, container, namespace, metricsExtra, *config.Get().PrometheusHorizont)                   //nolint:lll
-	cpuRequestQuery := fmt.Sprintf(`max(quantile_over_time(0.50,rate(container_cpu_usage_seconds_total{container="%s",namespace="%s"%s}[1m])[%s:1m]))`, container, namespace, metricsExtra, *config.Get().PrometheusHorizont)        //nolint:lll
-	cpuLimitQueryAggresive := fmt.Sprintf(`max(quantile_over_time(0.99,rate(container_cpu_usage_seconds_total{container="%s",namespace="%s"%s}[1m])[%s:1m]))`, container, namespace, metricsExtra, *config.Get().PrometheusHorizont) //nolint:lll
-	cpuLimitQueryConservate := fmt.Sprintf(`max(max_over_time(rate(container_cpu_usage_seconds_total{container="%s",namespace="%s"%s}[1m])[%s:1m]))`, container, namespace, metricsExtra, *config.Get().PrometheusHorizont)          //nolint:lll
+	memoryRequestQuery := fmt.Sprintf(`max(quantile_over_time(0.50,container_memory_working_set_bytes{container="%s",namespace="%s"%s}[%s]))`, pod.ContainerName, pod.Namespace, metricsExtra, *config.Get().PrometheusHorizont)                 //nolint:lll
+	memoryLimitQueryAggresive := fmt.Sprintf(`max(quantile_over_time(0.99,container_memory_working_set_bytes{container="%s",namespace="%s"%s}[%s]))`, pod.ContainerName, pod.Namespace, metricsExtra, *config.Get().PrometheusHorizont)          //nolint:lll
+	memoryLimitQueryConservate := fmt.Sprintf(`max(max_over_time(container_memory_working_set_bytes{container="%s",namespace="%s"%s}[%s]))`, pod.ContainerName, pod.Namespace, metricsExtra, *config.Get().PrometheusHorizont)                   //nolint:lll
+	cpuRequestQuery := fmt.Sprintf(`max(quantile_over_time(0.50,rate(container_cpu_usage_seconds_total{container="%s",namespace="%s"%s}[1m])[%s:1m]))`, pod.ContainerName, pod.Namespace, metricsExtra, *config.Get().PrometheusHorizont)        //nolint:lll
+	cpuLimitQueryAggresive := fmt.Sprintf(`max(quantile_over_time(0.99,rate(container_cpu_usage_seconds_total{container="%s",namespace="%s"%s}[1m])[%s:1m]))`, pod.ContainerName, pod.Namespace, metricsExtra, *config.Get().PrometheusHorizont) //nolint:lll
+	cpuLimitQueryConservate := fmt.Sprintf(`max(max_over_time(rate(container_cpu_usage_seconds_total{container="%s",namespace="%s"%s}[1m])[%s:1m]))`, pod.ContainerName, pod.Namespace, metricsExtra, *config.Get().PrometheusHorizont)          //nolint:lll
 
 	memoryRequest, err := getMetrics(memoryRequestQuery)
 	if err != nil {
@@ -103,30 +115,30 @@ func Get(container, namespace string) (*Requests, error) { //nolint:funlen,cyclo
 		return nil, errors.Wrap(err, "error getting cpu limits")
 	}
 
-	result := Requests{}
+	result := types.Recomendations{}
 
 	if len(memoryRequest) == 1 {
-		result.MemoryRequest = ByteCountSI(int64(memoryRequest[0].Value))
+		result.MemoryRequest = utils.ByteCountSI(int64(memoryRequest[0].Value))
 	}
 
 	if len(memoryLimit) == 1 {
-		result.MemoryLimit = ByteCountSI(int64(memoryLimit[0].Value))
+		result.MemoryLimit = utils.ByteCountSI(int64(memoryLimit[0].Value))
 	}
 
 	if len(cpuRequest) == 1 {
-		b := fmt.Sprintf("%.0fm", cpuRequest[0].Value*bytesUnit)
+		b := fmt.Sprintf("%.0fm", cpuRequest[0].Value*utils.BytesUnit)
 
 		result.CPURequest = strings.ReplaceAll(b, ".00", "")
 	}
 
 	if len(cpuLimit) == 1 {
-		b := fmt.Sprintf("%.0fm", cpuLimit[0].Value*bytesUnit)
+		b := fmt.Sprintf("%.0fm", cpuLimit[0].Value*utils.BytesUnit)
 
 		result.CPULimit = strings.ReplaceAll(b, ".00", "")
 	}
 
 	// add result in cache
-	recomendationCache[key] = &result
+	recomendationCache[cacheKey] = &result
 
 	return &result, nil
 }
@@ -169,22 +181,4 @@ func getMetrics(query string) (model.Vector, error) {
 	}
 
 	return v, nil
-}
-
-func ByteCountSI(b int64) string {
-	if b < bytesUnit {
-		return fmt.Sprintf("%dm", b)
-	}
-
-	div, exp := int64(bytesUnit), 0
-	for n := b / bytesUnit; n >= bytesUnit; n /= bytesUnit {
-		div *= bytesUnit
-		exp++
-	}
-
-	q := float64(b) / float64(div)
-
-	result := fmt.Sprintf("%.2f%ci", q, "KMGTPE"[exp])
-
-	return strings.ReplaceAll(result, ".00", "")
 }

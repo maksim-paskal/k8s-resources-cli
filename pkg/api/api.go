@@ -65,7 +65,6 @@ func GetPodResources() ([]*types.PodResources, error) { //nolint: funlen,cyclop,
 
 	pods, err := clientset.CoreV1().Pods(*config.Get().Namespace).List(ctx, metav1.ListOptions{
 		LabelSelector: *config.Get().PodLabelSelector,
-		FieldSelector: "status.phase=Running",
 	})
 	if err != nil {
 		return nil, errors.Wrap(err, "error get pods")

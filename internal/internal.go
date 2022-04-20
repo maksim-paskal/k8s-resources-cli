@@ -61,15 +61,6 @@ func Run() error { //nolint:funlen,cyclop
 
 	fmt.Fprintln(w, strings.Join(header, "\t"))
 
-	const separatorString = "------"
-
-	separator := make([]string, len(header))
-	for i := range header {
-		separator[i] = "------"
-	}
-
-	fmt.Fprintln(w, strings.Join(separator, "\t"))
-
 	if len(pods) == 0 {
 		return errors.New("no pods found")
 	}

@@ -58,24 +58,24 @@ func ParseStrategyType(strategyType string) (StrategyType, error) {
 	}
 }
 
-// Type of information to collect.
-type CollectorType string
+// Grouping metrics key.
+type GroupBy string
 
 const (
-	CollectorTypeContainer   = CollectorType("container")
-	CollectorTypePod         = CollectorType("pod")
-	CollectorTypePodTemplate = CollectorType("podtemplate")
+	GroupByContainer   = GroupBy("container")
+	GroupByPod         = GroupBy("pod")
+	GroupByPodTemplate = GroupBy("podtemplate")
 )
 
-func ParseCollectorType(collectorType string) (CollectorType, error) {
-	switch collectorType {
+func ParseGroupBy(groupBy string) (GroupBy, error) {
+	switch groupBy {
 	case "container":
-		return CollectorTypeContainer, nil
+		return GroupByContainer, nil
 	case "pod":
-		return CollectorTypePod, nil
+		return GroupByPod, nil
 	case "podtemplate":
-		return CollectorTypePodTemplate, nil
+		return GroupByPodTemplate, nil
 	default:
-		return "", errors.Errorf("unknown collector type %s", collectorType)
+		return "", errors.Errorf("unknown collector type %s", groupBy)
 	}
 }

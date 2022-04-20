@@ -54,7 +54,7 @@ func Get(pod *types.PodResources) (*types.Recomendations, error) { //nolint:funl
 
 	// search by pod name
 	if collectorType == types.CollectorTypePod {
-		cacheKey = fmt.Sprintf("%s,%s:%s", pod.PodName, pod.ContainerName, pod.Namespace)
+		cacheKey = fmt.Sprintf("%s:%s:%s", pod.PodName, pod.ContainerName, pod.Namespace)
 		metricsExtra += fmt.Sprintf(`,pod="%s"`, pod.PodName)
 	}
 

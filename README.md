@@ -1,6 +1,6 @@
 # Kubernetes resource advisor
 
-This tool helps you to find right resources for your Kubernetes pods.
+This tool helps you to find the right resources for your Kubernetes pods.
 
 ## Install prometheus
 
@@ -20,7 +20,7 @@ helm upgrade prometheus prometheus-community/prometheus \
 --set server.global.scrape_interval=15s \
 --set server.retention=3d
 
-# prometheus will be avaible on this ip
+# prometheus will be available on this ip
 kubectl -n prometheus get svc prometheus-server -o go-template='{{ .spec.clusterIP }}'
 ```
 
@@ -54,7 +54,7 @@ k8s-resources-cli \
 -prometheus.url=http://$(kubectl -n prometheus get svc prometheus-server -o go-template='{{ .spec.clusterIP }}')
 ```
 
-Strategy can be `aggressive` this strategy will try to find container resources limits with 99th percentile of resource usage and `conservative` stategy will try to find container resources limits with maximum resource usage.
+Strategy can be `aggressive` this strategy will try to find container resources limits with 99th percentile of resource usage and `conservative` strategy will try to find container resources limits with maximum resource usage.
 
 Example output:
 

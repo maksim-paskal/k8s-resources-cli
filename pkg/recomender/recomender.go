@@ -33,12 +33,12 @@ import (
 var recomendationCache = make(map[string]*types.Recomendations)
 
 func Get(pod *types.PodResources) (*types.Recomendations, error) { //nolint:funlen,cyclop
-	limitsStrategy, err := types.ParseStrategyType(*config.Get().LimitsStrategy)
+	limitsStrategy, err := types.ParseStrategyType(*config.Get().Strategy)
 	if err != nil {
 		return nil, errors.Wrap(err, "error parsing strategy")
 	}
 
-	collectorType, err := types.ParseCollectorType(*config.Get().CollectorType)
+	groupBy, err := types.ParseGroupBy(*config.Get().GroupBy)
 	if err != nil {
 		return nil, errors.Wrap(err, "error parsing collector type")
 	}
@@ -53,13 +53,13 @@ func Get(pod *types.PodResources) (*types.Recomendations, error) { //nolint:funl
 	}
 
 	// search by pod name
-	if collectorType == types.CollectorTypePod {
+	if groupBy == types.GroupByPod {
 		cacheKey = fmt.Sprintf("%s:%s:%s", pod.PodName, pod.ContainerName, pod.Namespace)
 		metricsExtra += fmt.Sprintf(`,pod="%s"`, pod.PodName)
 	}
 
 	// search by pod template name
-	if collectorType == types.CollectorTypePodTemplate {
+	if groupBy == types.GroupByPodTemplate {
 		if len(pod.PodTemplate) == 0 {
 			return nil, errors.New("no pod template value")
 		}
@@ -78,12 +78,12 @@ func Get(pod *types.PodResources) (*types.Recomendations, error) { //nolint:funl
 	// requests = 50 percentile of resource usage
 	// limits (conservate) = max resource usage
 	// limits (aggressive) = 99 percentile of resource usage
-	memoryRequestQuery := fmt.Sprintf(`max(quantile_over_time(0.50,container_memory_working_set_bytes{container="%s",namespace="%s"%s}[%s]))`, pod.ContainerName, pod.Namespace, metricsExtra, *config.Get().PrometheusHorizont)                 //nolint:lll
-	memoryLimitQueryAggresive := fmt.Sprintf(`max(quantile_over_time(0.99,container_memory_working_set_bytes{container="%s",namespace="%s"%s}[%s]))`, pod.ContainerName, pod.Namespace, metricsExtra, *config.Get().PrometheusHorizont)          //nolint:lll
-	memoryLimitQueryConservate := fmt.Sprintf(`max(max_over_time(container_memory_working_set_bytes{container="%s",namespace="%s"%s}[%s]))`, pod.ContainerName, pod.Namespace, metricsExtra, *config.Get().PrometheusHorizont)                   //nolint:lll
-	cpuRequestQuery := fmt.Sprintf(`max(quantile_over_time(0.50,rate(container_cpu_usage_seconds_total{container="%s",namespace="%s"%s}[1m])[%s:1m]))`, pod.ContainerName, pod.Namespace, metricsExtra, *config.Get().PrometheusHorizont)        //nolint:lll
-	cpuLimitQueryAggresive := fmt.Sprintf(`max(quantile_over_time(0.99,rate(container_cpu_usage_seconds_total{container="%s",namespace="%s"%s}[1m])[%s:1m]))`, pod.ContainerName, pod.Namespace, metricsExtra, *config.Get().PrometheusHorizont) //nolint:lll
-	cpuLimitQueryConservate := fmt.Sprintf(`max(max_over_time(rate(container_cpu_usage_seconds_total{container="%s",namespace="%s"%s}[1m])[%s:1m]))`, pod.ContainerName, pod.Namespace, metricsExtra, *config.Get().PrometheusHorizont)          //nolint:lll
+	memoryRequestQuery := fmt.Sprintf(`max(quantile_over_time(0.50,container_memory_working_set_bytes{container="%s",namespace="%s"%s}[%s]))`, pod.ContainerName, pod.Namespace, metricsExtra, *config.Get().PrometheusRetention)                 //nolint:lll
+	memoryLimitQueryAggresive := fmt.Sprintf(`max(quantile_over_time(0.99,container_memory_working_set_bytes{container="%s",namespace="%s"%s}[%s]))`, pod.ContainerName, pod.Namespace, metricsExtra, *config.Get().PrometheusRetention)          //nolint:lll
+	memoryLimitQueryConservate := fmt.Sprintf(`max(max_over_time(container_memory_working_set_bytes{container="%s",namespace="%s"%s}[%s]))`, pod.ContainerName, pod.Namespace, metricsExtra, *config.Get().PrometheusRetention)                   //nolint:lll
+	cpuRequestQuery := fmt.Sprintf(`max(quantile_over_time(0.50,rate(container_cpu_usage_seconds_total{container="%s",namespace="%s"%s}[1m])[%s:1m]))`, pod.ContainerName, pod.Namespace, metricsExtra, *config.Get().PrometheusRetention)        //nolint:lll
+	cpuLimitQueryAggresive := fmt.Sprintf(`max(quantile_over_time(0.99,rate(container_cpu_usage_seconds_total{container="%s",namespace="%s"%s}[1m])[%s:1m]))`, pod.ContainerName, pod.Namespace, metricsExtra, *config.Get().PrometheusRetention) //nolint:lll
+	cpuLimitQueryConservate := fmt.Sprintf(`max(max_over_time(rate(container_cpu_usage_seconds_total{container="%s",namespace="%s"%s}[1m])[%s:1m]))`, pod.ContainerName, pod.Namespace, metricsExtra, *config.Get().PrometheusRetention)          //nolint:lll
 
 	memoryRequest, err := getMetrics(memoryRequestQuery)
 	if err != nil {

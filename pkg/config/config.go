@@ -39,9 +39,9 @@ type AppConfig struct {
 	PodLabelSelector     *string
 	PrometheusGroupField *string
 	PrometheusGroupValue *string
-	PrometheusHorizont   *string
-	LimitsStrategy       *string
-	CollectorType        *string
+	PrometheusRetention  *string
+	Strategy             *string
+	GroupBy              *string
 }
 
 func (c *AppConfig) String() string {
@@ -70,10 +70,10 @@ var appConfig = &AppConfig{
 	PrometheusPassword:   flag.String("prometheus.password", "", "prometheus basic auth password"),
 	PrometheusGroupField: flag.String("prometheus.group.field", "", "prometheus shared group field"),
 	PrometheusGroupValue: flag.String("prometheus.group.value", "", "prometheus shared group value"),
-	PrometheusHorizont:   flag.String("prometheus.horizont", "7d", "metrics period to process"),
+	PrometheusRetention:  flag.String("prometheus.retention", "7d", "period of metrics to process"),
 	ShowDebugJSON:        flag.Bool("ShowDebugJSON", false, "show debug json"),
-	LimitsStrategy:       flag.String("LimitsStrategy", "conservative", "limits strategy"),
-	CollectorType:        flag.String("CollectorType", "podtemplate", "collect type"),
+	Strategy:             flag.String("strategy", "conservative", "strategy to calculate container limits"),
+	GroupBy:              flag.String("groupby", "podtemplate", "collect type"),
 }
 
 func Load() error {
@@ -95,12 +95,12 @@ func Load() error {
 }
 
 func Check() error {
-	_, err := types.ParseStrategyType(*appConfig.LimitsStrategy)
+	_, err := types.ParseStrategyType(*appConfig.Strategy)
 	if err != nil {
 		return errors.Wrap(err, "error parse limits strategy")
 	}
 
-	_, err = types.ParseCollectorType(*appConfig.CollectorType)
+	_, err = types.ParseGroupBy(*appConfig.GroupBy)
 	if err != nil {
 		return errors.Wrap(err, "error parse collector type")
 	}

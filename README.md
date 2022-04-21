@@ -17,6 +17,12 @@ helm upgrade prometheus prometheus-community/prometheus \
 --set nodeExporter.enabled=false \
 --set alertmanager.enabled=false \
 --set pushgateway.enabled=false \
+--set kube-state-metrics.resources.requests.cpu=10m \
+--set kube-state-metrics.resources.requests.memory=50Mi \
+--set configmapReload.prometheus.enabled=false \
+--set server.strategy.type=Recreate \
+--set server.resources.requests.cpu=100m \
+--set server.resources.requests.memory=1Gi \
 --set server.global.scrape_interval=15s \
 --set server.retention=3d
 

@@ -79,17 +79,23 @@ func GetPodResources() ([]*types.PodResources, error) { //nolint: funlen,cyclop,
 	for _, pod := range pods.Items {
 		for _, container := range pod.Spec.Containers {
 			item := types.PodResources{
-				PodName:         pod.Name,
-				PodTemplate:     pod.GenerateName,
-				PodTemplateHash: pod.Labels["pod-template-hash"],
-				ContainerName:   container.Name,
-				Namespace:       pod.Namespace,
-				MemoryRequest:   container.Resources.Requests.Memory().String(),
-				MemoryLimit:     container.Resources.Limits.Memory().String(),
-				CPURequest:      container.Resources.Requests.Cpu().String(),
-				CPULimit:        container.Resources.Limits.Cpu().String(),
-				QoS:             string(pod.Status.QOSClass),
-				SafeToEvict:     false,
+				PodName:       pod.Name,
+				PodTemplate:   pod.GenerateName,
+				ContainerName: container.Name,
+				Namespace:     pod.Namespace,
+				MemoryRequest: container.Resources.Requests.Memory().String(),
+				MemoryLimit:   container.Resources.Limits.Memory().String(),
+				CPURequest:    container.Resources.Requests.Cpu().String(),
+				CPULimit:      container.Resources.Limits.Cpu().String(),
+				QoS:           string(pod.Status.QOSClass),
+				SafeToEvict:   false,
+			}
+
+			podTemplateHash := pod.Labels["pod-template-hash"]
+
+			if len(podTemplateHash) > 0 {
+				podTemplateHash = fmt.Sprintf("%s-", podTemplateHash)
+				item.PodTemplate = strings.TrimSuffix(item.PodTemplate, podTemplateHash)
 			}
 
 			if len(*config.Get().Namespace) == 0 {

@@ -26,17 +26,18 @@ type Recomendations struct {
 
 // Pod results.
 type PodResources struct {
-	PodName       string
-	PodTemplate   string
-	ContainerName string
-	Namespace     string
-	MemoryRequest string
-	MemoryLimit   string
-	CPURequest    string
-	CPULimit      string
-	QoS           string
-	SafeToEvict   bool
-	Recommend     *Recomendations
+	PodName         string
+	PodTemplate     string
+	PodTemplateHash string
+	ContainerName   string
+	Namespace       string
+	MemoryRequest   string
+	MemoryLimit     string
+	CPURequest      string
+	CPULimit        string
+	QoS             string
+	SafeToEvict     bool
+	Recommend       *Recomendations
 }
 
 // strategy to calculate resources.

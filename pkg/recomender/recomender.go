@@ -60,12 +60,20 @@ func Get(pod *types.PodResources) (*types.Recomendations, error) { //nolint:funl
 
 	// search by pod template name
 	if groupBy == types.GroupByPodTemplate {
-		if len(pod.PodTemplate) == 0 {
+		podTemplate := pod.PodTemplate
+		podTemplateHash := pod.PodTemplateHash
+
+		if len(podTemplateHash) > 0 {
+			podTemplateHash = fmt.Sprintf("%s-", podTemplateHash)
+			podTemplate = strings.TrimSuffix(podTemplate, podTemplateHash)
+		}
+
+		if len(podTemplate) == 0 {
 			return nil, errors.New("no pod template value")
 		}
 
-		cacheKey = fmt.Sprintf("%s:%s:%s", pod.PodTemplate, pod.ContainerName, pod.Namespace)
-		metricsExtra += fmt.Sprintf(`,pod=~"%s.+"`, pod.PodTemplate)
+		cacheKey = fmt.Sprintf("%s:%s:%s", podTemplate, pod.ContainerName, pod.Namespace)
+		metricsExtra += fmt.Sprintf(`,pod=~"%s.+"`, podTemplate)
 	}
 
 	// check for recomendation in cache

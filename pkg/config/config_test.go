@@ -22,7 +22,7 @@ import (
 func TestConfig(t *testing.T) {
 	t.Parallel()
 
-	if err := flag.Set("config", "testdata/config.yaml"); err != nil {
+	if err := flag.Set("config", "testdata/test-config.yaml"); err != nil {
 		t.Fatal(err)
 	}
 

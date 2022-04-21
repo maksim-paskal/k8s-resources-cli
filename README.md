@@ -37,8 +37,8 @@ brew install maksim-paskal/tap/k8s-resources-cli
 ### Linux
 
 ```bash
-# for example install v0.0.3 on linux amd64
-sudo curl -L -o /usr/local/bin/k8s-resources-cli https://github.com/maksim-paskal/k8s-resources-cli/releases/download/v0.0.3/k8s-resources-cli_0.0.3_linux_amd64
+# for example install v0.0.4 on linux amd64
+version=0.0.4; sudo curl -L -o /usr/local/bin/k8s-resources-cli https://github.com/maksim-paskal/k8s-resources-cli/releases/download/v${version}/k8s-resources-cli_${version}_linux_amd64
 
 # make it executable
 sudo chmod +x /usr/local/bin/k8s-resources-cli

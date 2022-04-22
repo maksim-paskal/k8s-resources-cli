@@ -83,6 +83,7 @@ func GetPodResources() ([]*types.PodResources, error) { //nolint: funlen,cyclop,
 				PodTemplate:   pod.GenerateName,
 				ContainerName: container.Name,
 				Namespace:     pod.Namespace,
+				NodeName:      pod.Spec.NodeName,
 				MemoryRequest: container.Resources.Requests.Memory().String(),
 				MemoryLimit:   container.Resources.Limits.Memory().String(),
 				CPURequest:    container.Resources.Requests.Cpu().String(),
@@ -96,10 +97,6 @@ func GetPodResources() ([]*types.PodResources, error) { //nolint: funlen,cyclop,
 			if len(podTemplateHash) > 0 {
 				podTemplateHash = fmt.Sprintf("%s-", podTemplateHash)
 				item.PodTemplate = strings.TrimSuffix(item.PodTemplate, podTemplateHash)
-			}
-
-			if len(*config.Get().Namespace) == 0 {
-				item.PodName = fmt.Sprintf("%s/%s", pod.Namespace, pod.Name)
 			}
 
 			if pod.Annotations["cluster-autoscaler.kubernetes.io/safe-to-evict"] == "false" {

@@ -29,6 +29,7 @@ type PodResources struct {
 	PodName       string
 	PodTemplate   string
 	ContainerName string
+	NodeName      string
 	Namespace     string
 	MemoryRequest string
 	MemoryLimit   string

@@ -65,8 +65,9 @@ func Run() error { //nolint:funlen,cyclop
 		return errors.New("no pods found")
 	}
 
+	// sort pods by namespace and name
 	sort.Slice(pods, func(i, j int) bool {
-		return pods[i].PodName < pods[j].PodName
+		return pods[i].Namespace+pods[i].PodName < pods[j].Namespace+pods[j].PodName
 	})
 
 	for _, result := range pods {
@@ -77,6 +78,11 @@ func Run() error { //nolint:funlen,cyclop
 			result.MemoryLimit = fmt.Sprintf("%s / %s", result.MemoryLimit, result.Recommend.MemoryLimit)
 			result.CPURequest = fmt.Sprintf("%s / %s", result.CPURequest, result.Recommend.CPURequest)
 			result.CPULimit = fmt.Sprintf("%s / %s", result.CPULimit, result.Recommend.CPULimit)
+		}
+
+		// print namespace if no namespace is specified
+		if len(*config.Get().Namespace) == 0 {
+			result.PodName = fmt.Sprintf("%s/%s", result.Namespace, result.PodName)
 		}
 
 		item = append(item, result.PodName)

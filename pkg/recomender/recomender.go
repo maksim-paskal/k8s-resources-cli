@@ -47,6 +47,20 @@ func Get(pod *types.PodResources) (*types.Recomendations, error) { //nolint:funl
 
 	metricsExtra := ""
 
+	// search by pod template name
+	if groupBy == types.GroupByPodTemplate {
+		// if pod is created without replica set, pod template name will be empty
+		if len(pod.PodTemplate) == 0 {
+			log.Warnf("no pod template value %s/%s, use pod group", pod.Namespace, pod.PodName)
+
+			// use pod group by for pod without template
+			groupBy = types.GroupByPod
+		} else {
+			cacheKey = fmt.Sprintf("%s:%s:%s", pod.PodTemplate, pod.ContainerName, pod.Namespace)
+			metricsExtra += fmt.Sprintf(`,pod=~"%s.+"`, pod.PodTemplate)
+		}
+	}
+
 	// extra fields
 	if len(*config.Get().PrometheusGroupField) > 0 {
 		metricsExtra += fmt.Sprintf(`,%s=~"%s"`, *config.Get().PrometheusGroupField, *config.Get().PrometheusGroupValue)
@@ -56,16 +70,6 @@ func Get(pod *types.PodResources) (*types.Recomendations, error) { //nolint:funl
 	if groupBy == types.GroupByPod {
 		cacheKey = fmt.Sprintf("%s:%s:%s", pod.PodName, pod.ContainerName, pod.Namespace)
 		metricsExtra += fmt.Sprintf(`,pod="%s"`, pod.PodName)
-	}
-
-	// search by pod template name
-	if groupBy == types.GroupByPodTemplate {
-		if len(pod.PodTemplate) == 0 {
-			return nil, errors.New("no pod template value")
-		}
-
-		cacheKey = fmt.Sprintf("%s:%s:%s", pod.PodTemplate, pod.ContainerName, pod.Namespace)
-		metricsExtra += fmt.Sprintf(`,pod=~"%s.+"`, pod.PodTemplate)
 	}
 
 	// check for recomendation in cache

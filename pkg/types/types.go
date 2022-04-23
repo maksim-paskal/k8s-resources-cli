@@ -13,6 +13,8 @@ limitations under the License.
 package types
 
 import (
+	"fmt"
+
 	"github.com/pkg/errors"
 )
 
@@ -26,18 +28,41 @@ type Recomendations struct {
 
 // Pod results.
 type PodResources struct {
-	PodName       string
-	PodTemplate   string
-	ContainerName string
-	NodeName      string
-	Namespace     string
-	MemoryRequest string
-	MemoryLimit   string
-	CPURequest    string
-	CPULimit      string
-	QoS           string
-	SafeToEvict   bool
-	Recommend     *Recomendations
+	PodName        string
+	PodTemplate    string
+	ContainerName  string
+	NodeName       string
+	Namespace      string
+	MemoryRequest  string
+	MemoryLimit    string
+	CPURequest     string
+	CPULimit       string
+	QoS            string
+	SafeToEvict    bool
+	recomendations *Recomendations
+}
+
+func (r *PodResources) SetRecomendation(recomendations *Recomendations) {
+	r.recomendations = recomendations
+}
+
+func (r *PodResources) GetPodNamespaceName() string {
+	return fmt.Sprintf("%s/%s", r.Namespace, r.PodName)
+}
+
+func (r *PodResources) GetFormattedResources() *PodResources {
+	if r.recomendations == nil {
+		return r
+	}
+
+	result := PodResources{}
+
+	result.MemoryRequest = fmt.Sprintf("%s / %s", r.MemoryRequest, r.recomendations.MemoryRequest)
+	result.MemoryLimit = fmt.Sprintf("%s / %s", r.MemoryLimit, r.recomendations.MemoryLimit)
+	result.CPURequest = fmt.Sprintf("%s / %s", r.CPURequest, r.recomendations.CPURequest)
+	result.CPULimit = fmt.Sprintf("%s / %s", r.CPULimit, r.recomendations.CPULimit)
+
+	return &result
 }
 
 // strategy to calculate resources.

@@ -67,30 +67,27 @@ func Run() error { //nolint:funlen,cyclop
 
 	// sort pods by namespace and name
 	sort.Slice(pods, func(i, j int) bool {
-		return pods[i].Namespace+pods[i].PodName < pods[j].Namespace+pods[j].PodName
+		return pods[i].GetPodNamespaceName() < pods[j].GetPodNamespaceName()
 	})
 
 	for _, result := range pods {
 		item := make([]string, 0)
 
-		if result.Recommend != nil {
-			result.MemoryRequest = fmt.Sprintf("%s / %s", result.MemoryRequest, result.Recommend.MemoryRequest)
-			result.MemoryLimit = fmt.Sprintf("%s / %s", result.MemoryLimit, result.Recommend.MemoryLimit)
-			result.CPURequest = fmt.Sprintf("%s / %s", result.CPURequest, result.Recommend.CPURequest)
-			result.CPULimit = fmt.Sprintf("%s / %s", result.CPULimit, result.Recommend.CPULimit)
-		}
+		formattedResources := result.GetFormattedResources()
+
+		podName := result.PodName
 
 		// print namespace if no namespace is specified
 		if len(*config.Get().Namespace) == 0 {
-			result.PodName = fmt.Sprintf("%s/%s", result.Namespace, result.PodName)
+			podName = result.GetPodNamespaceName()
 		}
 
-		item = append(item, result.PodName)
+		item = append(item, podName)
 		item = append(item, result.ContainerName)
-		item = append(item, result.MemoryRequest)
-		item = append(item, result.MemoryLimit)
-		item = append(item, result.CPURequest)
-		item = append(item, result.CPULimit)
+		item = append(item, formattedResources.MemoryRequest)
+		item = append(item, formattedResources.MemoryLimit)
+		item = append(item, formattedResources.CPURequest)
+		item = append(item, formattedResources.CPULimit)
 
 		if *config.Get().ShowQoS {
 			item = append(item, result.QoS)

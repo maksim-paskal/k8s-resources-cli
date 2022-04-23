@@ -156,7 +156,7 @@ func calculateRecomendations(results []*types.PodResources) error {
 			return errors.Wrap(err, "error get metrics")
 		}
 
-		results[i].Recommend = recommend
+		results[i].SetRecomendation(recommend)
 
 		bar.Increment()
 	}

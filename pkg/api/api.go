@@ -175,7 +175,7 @@ func filterResult(item types.PodResources) (bool, error) {
 	for _, condition := range conditions {
 		eq := strings.Split(condition, "==")
 		if len(eq) != conditionParts {
-			return false, errors.Errorf("invalid filter condition: %s", condition)
+			return false, errors.Errorf("invalid filter condition: %s, it must be .Field==value", condition)
 		}
 
 		value, err := templateItem(eq[0], item)

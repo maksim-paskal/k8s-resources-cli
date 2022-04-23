@@ -43,8 +43,8 @@ brew install maksim-paskal/tap/k8s-resources-cli
 ### Linux
 
 ```bash
-# for example install v0.0.4 on linux amd64
-sudo curl -L -o /usr/local/bin/k8s-resources-cli https://github.com/maksim-paskal/k8s-resources-cli/releases/download/v0.0.4/k8s-resources-cli_0.0.4_linux_amd64
+# for example install v0.0.5 on linux amd64
+sudo curl -L -o /usr/local/bin/k8s-resources-cli https://github.com/maksim-paskal/k8s-resources-cli/releases/download/v0.0.5/k8s-resources-cli_0.0.5_linux_amd64
 
 # make it executable
 sudo chmod +x /usr/local/bin/k8s-resources-cli
@@ -60,7 +60,7 @@ k8s-resources-cli \
 -prometheus.url=http://$(kubectl -n prometheus get svc prometheus-server -o go-template='{{ .spec.clusterIP }}')
 ```
 
-Strategy can be `aggressive` this strategy will try to find container resources limits with 99th percentile of resource usage and `conservative` strategy will try to find container resources limits with maximum resource usage.
+For pod resources requests recommendations are used at the 50th percentile of resources. For pod resources limits recommendations it depends on chosen strategy it can be `aggressive` - this strategy will try to find container resources limits with 99th percentile of resource usage and `conservative` strategy - it will try to find container resources limits with maximum resource usage.
 
 Example output:
 
@@ -74,3 +74,60 @@ metrics-server-ff9dbcb6c-hfbrx          |metrics-server         |70Mi / 30.98Mi 
 ```
 
 columns show current container resources memory and cpu usage and `/` recommended values based on strategy.
+
+## Examples of usage
+
+<details>
+  <summary>Detect resources usage of containers in namespace</summary>
+
+  ```bash
+  k8s-resources-cli \
+  -kubeconfig=$HOME/.kube/config \
+  -prometheus.retention=3d \
+  -strategy=aggressive \
+  -prometheus.url=http://$(kubectl -n prometheus get svc prometheus-server -o go-template='{{ .spec.clusterIP }}') \
+  -namespace=kube-system
+  ```
+</details>
+
+<details>
+  <summary>Detect resources usage of containers that are running on some node</summary>
+
+  ```bash
+  k8s-resources-cli \
+  -kubeconfig=$HOME/.kube/config \
+  -prometheus.retention=3d \
+  -strategy=aggressive \
+  -prometheus.url=http://$(kubectl -n prometheus get svc prometheus-server -o go-template='{{ .spec.clusterIP }}') \
+  -filter=.NodeName==somenode
+  ```
+</details>
+
+<details>
+  <summary>Detect resources usage of containers in namespace with pod labels</summary>
+
+  ```bash
+  k8s-resources-cli \
+  -kubeconfig=$HOME/.kube/config \
+  -prometheus.retention=3d \
+  -strategy=aggressive \
+  -prometheus.url=http://$(kubectl -n prometheus get svc prometheus-server -o go-template='{{ .spec.clusterIP }}') \
+  -namespace=kube-system \
+  -podLabelSelector=k8s-app=kube-dns
+  ```
+</details>
+
+<details>
+  <summary>Detect resources usage of containers in some external kubernetes cluster</summary>
+
+  ```bash
+  k8s-resources-cli \
+  -kubeconfig=$HOME/.kube/external-cluster-config \
+  -prometheus.retention=3d \
+  -strategy=aggressive \
+  -prometheus.url=https://external-cluster-prometheus.domain.com \
+  -prometheus.user=basic-auth-user \
+  -prometheus.password=basic-auth-password \
+  -namespace=kube-system
+  ```
+</details>

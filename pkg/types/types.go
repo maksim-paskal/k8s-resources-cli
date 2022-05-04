@@ -24,6 +24,7 @@ type Recomendations struct {
 	MemoryLimit   string
 	CPURequest    string
 	CPULimit      string
+	OOMKilled     bool
 }
 
 // Pod results.
@@ -61,6 +62,10 @@ func (r *PodResources) GetFormattedResources() *PodResources {
 	result.MemoryLimit = fmt.Sprintf("%s / %s", r.MemoryLimit, r.recomendations.MemoryLimit)
 	result.CPURequest = fmt.Sprintf("%s / %s", r.CPURequest, r.recomendations.CPURequest)
 	result.CPULimit = fmt.Sprintf("%s / %s", r.CPULimit, r.recomendations.CPULimit)
+
+	if r.recomendations.OOMKilled {
+		result.MemoryLimit = fmt.Sprintf("%s OOMKilled", result.MemoryLimit)
+	}
 
 	return &result
 }

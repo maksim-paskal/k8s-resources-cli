@@ -88,6 +88,7 @@ func Get(pod *types.PodResources) (*types.Recomendations, error) { //nolint:funl
 	cpuRequestQuery := fmt.Sprintf(`max(quantile_over_time(0.50,rate(container_cpu_usage_seconds_total{container="%s",namespace="%s"%s}[1m])[%s:1m]))`, pod.ContainerName, pod.Namespace, metricsExtra, *config.Get().PrometheusRetention)        //nolint:lll
 	cpuLimitQueryAggresive := fmt.Sprintf(`max(quantile_over_time(0.99,rate(container_cpu_usage_seconds_total{container="%s",namespace="%s"%s}[1m])[%s:1m]))`, pod.ContainerName, pod.Namespace, metricsExtra, *config.Get().PrometheusRetention) //nolint:lll
 	cpuLimitQueryConservate := fmt.Sprintf(`max(max_over_time(rate(container_cpu_usage_seconds_total{container="%s",namespace="%s"%s}[1m])[%s:1m]))`, pod.ContainerName, pod.Namespace, metricsExtra, *config.Get().PrometheusRetention)          //nolint:lll
+	oomkilled := fmt.Sprintf(`sum_over_time(kube_pod_container_status_last_terminated_reason{reason="OOMKilled",container="%s",namespace="%s"%s}[%s])`, pod.ContainerName, pod.Namespace, metricsExtra, *config.Get().PrometheusRetention)        //nolint:lll
 
 	memoryRequest, err := getMetrics(memoryRequestQuery)
 	if err != nil {
@@ -119,6 +120,11 @@ func Get(pod *types.PodResources) (*types.Recomendations, error) { //nolint:funl
 		return nil, errors.Wrap(err, "error getting cpu limits")
 	}
 
+	containerOOMKilled, err := getMetrics(oomkilled)
+	if err != nil {
+		return nil, errors.Wrap(err, "error getting OOMKilled")
+	}
+
 	result := types.Recomendations{}
 
 	if len(memoryRequest) == 1 {
@@ -139,6 +145,12 @@ func Get(pod *types.PodResources) (*types.Recomendations, error) { //nolint:funl
 		b := fmt.Sprintf("%.0fm", cpuLimit[0].Value*utils.BytesUnit)
 
 		result.CPULimit = strings.ReplaceAll(b, ".00", "")
+	}
+
+	if len(containerOOMKilled) == 1 {
+		if containerOOMKilled[0].Value > 0 {
+			result.OOMKilled = true
+		}
 	}
 
 	// add result in cache

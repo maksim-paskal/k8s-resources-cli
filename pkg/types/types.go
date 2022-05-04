@@ -84,8 +84,6 @@ func (r *PodResources) GetFormattedResources() *PodResources {
 
 	if r.recomendations.OOMKilled {
 		result.MemoryLimit = fmt.Sprintf("%s OOMKilled", result.MemoryLimit)
-	} else {
-		result.MemoryLimit = r.MemoryLimit
 	}
 
 	return &result

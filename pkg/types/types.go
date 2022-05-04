@@ -58,13 +58,34 @@ func (r *PodResources) GetFormattedResources() *PodResources {
 
 	result := PodResources{}
 
-	result.MemoryRequest = fmt.Sprintf("%s / %s", r.MemoryRequest, r.recomendations.MemoryRequest)
-	result.MemoryLimit = fmt.Sprintf("%s / %s", r.MemoryLimit, r.recomendations.MemoryLimit)
-	result.CPURequest = fmt.Sprintf("%s / %s", r.CPURequest, r.recomendations.CPURequest)
-	result.CPULimit = fmt.Sprintf("%s / %s", r.CPULimit, r.recomendations.CPULimit)
+	if len(r.recomendations.MemoryRequest) > 0 {
+		result.MemoryRequest = fmt.Sprintf("%s / %s", r.MemoryRequest, r.recomendations.MemoryRequest)
+	} else {
+		result.MemoryRequest = r.MemoryRequest
+	}
+
+	if len(r.recomendations.MemoryLimit) > 0 {
+		result.MemoryLimit = fmt.Sprintf("%s / %s", r.MemoryLimit, r.recomendations.MemoryLimit)
+	} else {
+		result.MemoryLimit = r.MemoryLimit
+	}
+
+	if len(r.recomendations.CPURequest) > 0 {
+		result.CPURequest = fmt.Sprintf("%s / %s", r.CPURequest, r.recomendations.CPURequest)
+	} else {
+		result.CPURequest = r.CPURequest
+	}
+
+	if len(r.recomendations.CPULimit) > 0 {
+		result.CPULimit = fmt.Sprintf("%s / %s", r.CPULimit, r.recomendations.CPULimit)
+	} else {
+		result.CPULimit = r.CPULimit
+	}
 
 	if r.recomendations.OOMKilled {
 		result.MemoryLimit = fmt.Sprintf("%s OOMKilled", result.MemoryLimit)
+	} else {
+		result.MemoryLimit = r.MemoryLimit
 	}
 
 	return &result

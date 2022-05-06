@@ -25,6 +25,7 @@ import (
 	"github.com/maksim-paskal/k8s-resources-cli/pkg/types"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
@@ -77,7 +78,7 @@ func GetPodResources() ([]*types.PodResources, error) { //nolint: funlen,cyclop,
 	results := make([]*types.PodResources, 0)
 
 	for _, pod := range pods.Items {
-		for _, container := range pod.Spec.Containers {
+		for order, container := range pod.Spec.Containers {
 			item := types.PodResources{
 				PodName:       pod.Name,
 				PodTemplate:   pod.GenerateName,
@@ -101,6 +102,10 @@ func GetPodResources() ([]*types.PodResources, error) { //nolint: funlen,cyclop,
 
 			if pod.Annotations["cluster-autoscaler.kubernetes.io/safe-to-evict"] == "false" {
 				item.SafeToEvict = true
+			}
+
+			if isContainerTerminatedReason(pod, order, "OOMKilled") {
+				item.OOMKilled = true
 			}
 
 			showResult := false
@@ -205,4 +210,18 @@ func templateItem(value string, item types.PodResources) (string, error) {
 	}
 
 	return tpl.String(), nil
+}
+
+func isContainerTerminatedReason(pod corev1.Pod, containerOrder int, reason string) bool {
+	terminated := pod.Status.ContainerStatuses[containerOrder].LastTerminationState.Terminated
+
+	if terminated == nil {
+		return false
+	}
+
+	if terminated.Reason == reason {
+		return true
+	}
+
+	return false
 }

@@ -40,6 +40,7 @@ type PodResources struct {
 	CPULimit       string
 	QoS            string
 	SafeToEvict    bool
+	OOMKilled      bool
 	recomendations *Recomendations
 }
 
@@ -82,7 +83,7 @@ func (r *PodResources) GetFormattedResources() *PodResources {
 		result.CPULimit = r.CPULimit
 	}
 
-	if r.recomendations.OOMKilled {
+	if r.recomendations.OOMKilled || r.OOMKilled {
 		result.MemoryLimit = fmt.Sprintf("%s OOMKilled", result.MemoryLimit)
 	}
 

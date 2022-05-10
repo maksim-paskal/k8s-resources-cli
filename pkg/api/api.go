@@ -213,6 +213,11 @@ func templateItem(value string, item types.PodResources) (string, error) {
 }
 
 func isContainerTerminatedReason(pod corev1.Pod, containerOrder int, reason string) bool {
+	// ignore pod if have not container status (Pending)
+	if len(pod.Status.ContainerStatuses) <= containerOrder {
+		return false
+	}
+
 	terminated := pod.Status.ContainerStatuses[containerOrder].LastTerminationState.Terminated
 
 	if terminated == nil {

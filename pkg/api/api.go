@@ -125,7 +125,11 @@ func GetPodResources() ([]*types.PodResources, error) { //nolint: funlen,cyclop,
 				showResult = true
 			}
 
-			if !*config.Get().NoMemoryRequest && !*config.Get().NoCPURequest && len(*config.Get().Filter) == 0 {
+			if *config.Get().OOMKilled && item.OOMKilled {
+				showResult = true
+			}
+
+			if !*config.Get().NoMemoryRequest && !*config.Get().NoCPURequest && !*config.Get().OOMKilled && len(*config.Get().Filter) == 0 { //nolint:lll
 				showResult = true
 			}
 

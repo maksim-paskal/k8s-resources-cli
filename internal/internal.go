@@ -14,7 +14,6 @@ package internal
 
 import (
 	"bytes"
-	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -85,7 +84,13 @@ func Run() error { //nolint:funlen,cyclop
 		item = append(item, podName)
 		item = append(item, result.ContainerName)
 		item = append(item, formattedResources.MemoryRequest)
-		item = append(item, formattedResources.MemoryLimit)
+
+		if formattedResources.OOMKilled {
+			item = append(item, fmt.Sprintf("%s OOMKilled", formattedResources.MemoryLimit))
+		} else {
+			item = append(item, formattedResources.MemoryLimit)
+		}
+
 		item = append(item, formattedResources.CPURequest)
 		item = append(item, formattedResources.CPULimit)
 
@@ -98,12 +103,7 @@ func Run() error { //nolint:funlen,cyclop
 		}
 
 		if *config.Get().ShowDebugJSON {
-			info, err := json.Marshal(result)
-			if err != nil {
-				return errors.Wrap(err, "error marshalling result")
-			}
-
-			item = append(item, string(info))
+			item = append(item, result.String())
 		}
 
 		fmt.Fprintln(w, strings.Join(item, "\t"))

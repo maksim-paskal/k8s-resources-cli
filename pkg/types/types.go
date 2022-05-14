@@ -13,6 +13,7 @@ limitations under the License.
 package types
 
 import (
+	"encoding/json"
 	"fmt"
 
 	"github.com/pkg/errors"
@@ -42,6 +43,15 @@ type PodResources struct {
 	SafeToEvict    bool
 	OOMKilled      bool
 	recomendations *Recomendations
+}
+
+func (r *PodResources) String() string {
+	result, err := json.Marshal(r)
+	if err != nil {
+		return err.Error()
+	}
+
+	return string(result)
 }
 
 func (r *PodResources) SetRecomendation(recomendations *Recomendations) {
@@ -84,7 +94,7 @@ func (r *PodResources) GetFormattedResources() *PodResources {
 	}
 
 	if r.recomendations.OOMKilled || r.OOMKilled {
-		result.MemoryLimit = fmt.Sprintf("%s OOMKilled", result.MemoryLimit)
+		result.OOMKilled = true
 	}
 
 	return &result

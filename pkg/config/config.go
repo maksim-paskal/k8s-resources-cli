@@ -30,6 +30,7 @@ type AppConfig struct {
 	Filter               *string
 	ShowQoS              *bool
 	ShowSafeToEvict      *bool
+	OOMKilled            *bool
 	NoCPURequest         *bool
 	NoMemoryRequest      *bool
 	PrometheusURL        *string
@@ -63,6 +64,7 @@ var appConfig = &AppConfig{
 	PodLabelSelector:     flag.String("podLabelSelector", "", "pod label selector"),
 	ShowQoS:              flag.Bool("ShowQoS", false, "show QoS"),
 	ShowSafeToEvict:      flag.Bool("ShowSafeToEvict", false, "show Autoscaler safeToEvict"),
+	OOMKilled:            flag.Bool("OOMKilled", false, "show only if container OOMKilled"),
 	NoCPURequest:         flag.Bool("NoCPURequest", false, "show only when cpu request is not set"),
 	NoMemoryRequest:      flag.Bool("NoMemoryRequest", false, "show only when memory request is not set"),
 	PrometheusURL:        flag.String("prometheus.url", "", "prometheus url"),

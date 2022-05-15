@@ -78,7 +78,7 @@ func GetPodResources() ([]*types.PodResources, error) { //nolint: funlen,cyclop,
 	results := make([]*types.PodResources, 0)
 
 	for _, pod := range pods.Items {
-		for order, container := range pod.Spec.Containers {
+		for _, container := range pod.Spec.Containers {
 			item := types.PodResources{
 				PodName:       pod.Name,
 				PodTemplate:   pod.GenerateName,
@@ -104,7 +104,7 @@ func GetPodResources() ([]*types.PodResources, error) { //nolint: funlen,cyclop,
 				item.SafeToEvict = true
 			}
 
-			if isContainerTerminatedReason(pod, order, "OOMKilled") {
+			if isContainerTerminatedReason(pod, container.Name, "OOMKilled") {
 				item.OOMKilled = true
 			}
 
@@ -216,20 +216,15 @@ func templateItem(value string, item types.PodResources) (string, error) {
 	return tpl.String(), nil
 }
 
-func isContainerTerminatedReason(pod corev1.Pod, containerOrder int, reason string) bool {
-	// ignore pod if have not container status (Pending)
-	if len(pod.Status.ContainerStatuses) <= containerOrder {
+func isContainerTerminatedReason(pod corev1.Pod, containerName string, reason string) bool {
+	if len(pod.Status.ContainerStatuses) == 0 {
 		return false
 	}
 
-	terminated := pod.Status.ContainerStatuses[containerOrder].LastTerminationState.Terminated
-
-	if terminated == nil {
-		return false
-	}
-
-	if terminated.Reason == reason {
-		return true
+	for _, containerStatus := range pod.Status.ContainerStatuses {
+		if containerStatus.Name == containerName {
+			return containerStatus.LastTerminationState.Terminated != nil && containerStatus.LastTerminationState.Terminated.Reason == reason //nolint:lll
+		}
 	}
 
 	return false

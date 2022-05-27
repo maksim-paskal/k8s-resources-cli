@@ -81,16 +81,20 @@ func Run() error { //nolint:funlen,cyclop
 			podName = result.GetPodNamespaceName()
 		}
 
+		if result.Evicted {
+			podName += " Evicted"
+		}
+
 		item = append(item, podName)
 		item = append(item, result.ContainerName)
 		item = append(item, formattedResources.MemoryRequest)
 
+		memoryLimit := formattedResources.MemoryLimit
 		if formattedResources.OOMKilled {
-			item = append(item, fmt.Sprintf("%s OOMKilled", formattedResources.MemoryLimit))
-		} else {
-			item = append(item, formattedResources.MemoryLimit)
+			memoryLimit += " OOMKilled"
 		}
 
+		item = append(item, memoryLimit)
 		item = append(item, formattedResources.CPURequest)
 		item = append(item, formattedResources.CPULimit)
 

@@ -108,6 +108,10 @@ func GetPodResources() ([]*types.PodResources, error) { //nolint: funlen,cyclop,
 				item.OOMKilled = true
 			}
 
+			if pod.Status.Reason == "Evicted" {
+				item.Evicted = true
+			}
+
 			showResult := false
 
 			if len(*config.Get().Filter) > 0 {

@@ -15,8 +15,10 @@ package types
 import (
 	"encoding/json"
 	"fmt"
+	"math"
 
 	"github.com/pkg/errors"
+	"k8s.io/apimachinery/pkg/api/resource"
 )
 
 // Recommend for container resources.
@@ -42,6 +44,7 @@ type PodResources struct {
 	QoS            string
 	SafeToEvict    bool
 	OOMKilled      bool
+	Evicted        bool
 	recomendations *Recomendations
 }
 
@@ -62,7 +65,7 @@ func (r *PodResources) GetPodNamespaceName() string {
 	return fmt.Sprintf("%s/%s", r.Namespace, r.PodName)
 }
 
-func (r *PodResources) GetFormattedResources() *PodResources {
+func (r *PodResources) GetFormattedResources() *PodResources { //nolint:cyclop
 	if r.recomendations == nil {
 		return r
 	}
@@ -97,7 +100,85 @@ func (r *PodResources) GetFormattedResources() *PodResources {
 		result.OOMKilled = true
 	}
 
+	const scoreFormat = "%s OK"
+
+	if !result.OOMKilled {
+		if score := scoreResourcePlaning(MemoryResourcePlaningType, r.MemoryRequest, r.recomendations.MemoryRequest); score >= GoodResourcePlaningResult { //nolint:lll
+			result.MemoryRequest = fmt.Sprintf(scoreFormat, result.MemoryRequest)
+		}
+	}
+
+	if score := scoreResourcePlaning(CPUResourcePlaningType, r.CPURequest, r.recomendations.CPURequest); score >= GoodResourcePlaningResult { //nolint:lll
+		result.CPURequest = fmt.Sprintf(scoreFormat, result.CPURequest)
+	}
+
 	return &result
+}
+
+type ResourcePlaningType string
+
+const (
+	MemoryResourcePlaningType ResourcePlaningType = "memory"
+	CPUResourcePlaningType    ResourcePlaningType = "cpu"
+)
+
+type ResourcePlaningResult int
+
+func (p *ResourcePlaningResult) String() string {
+	result := ""
+
+	for i := 0; i < int(*p); i++ {
+		result += "*"
+	}
+
+	return result
+}
+
+const (
+	UnknownResourcePlaningResult ResourcePlaningResult = -1
+	BadResourcePlaningResult     ResourcePlaningResult = 0
+	GoodResourcePlaningResult    ResourcePlaningResult = 1
+	PerfectResourcePlaningResult ResourcePlaningResult = 2
+	GeniousResourcePlaningResult ResourcePlaningResult = 3
+	GodResourcePlaningResult     ResourcePlaningResult = 4
+)
+
+func scoreResourcePlaning(planingType ResourcePlaningType, req, reqrecomend string) ResourcePlaningResult {
+	if len(req) == 0 || len(reqrecomend) == 0 {
+		return UnknownResourcePlaningResult
+	}
+
+	resReq := resource.MustParse(req)
+	resReqRecomend := resource.MustParse(reqrecomend)
+
+	f := resReqRecomend.AsApproximateFloat64() / resReq.AsApproximateFloat64()
+	if f == 1 {
+		return GodResourcePlaningResult
+	}
+
+	if f >= 0.8 && f <= 1.2 {
+		return GeniousResourcePlaningResult
+	}
+
+	okDiffPerfect := resource.MustParse("10Mi")
+	okDiffGood := resource.MustParse("100Mi")
+
+	if planingType == CPUResourcePlaningType {
+		okDiffPerfect = resource.MustParse("10m")
+		okDiffGood = resource.MustParse("20m")
+	}
+
+	planDiff := math.Abs(resReqRecomend.AsApproximateFloat64() - resReq.AsApproximateFloat64())
+
+	if planDiff < okDiffPerfect.AsApproximateFloat64() {
+		return PerfectResourcePlaningResult
+	}
+
+	if planDiff < okDiffGood.AsApproximateFloat64() {
+		return GoodResourcePlaningResult
+	}
+
+	return BadResourcePlaningResult
 }
 
 // strategy to calculate resources.

@@ -9,3 +9,5 @@ linters:
   - varnamelen
   - exhaustruct
   - execinquery
+  - musttag
+  - depguard

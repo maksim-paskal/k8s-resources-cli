@@ -32,7 +32,7 @@ import (
 	"k8s.io/client-go/tools/clientcmd"
 )
 
-// nolint: gochecknoglobals
+//nolint: gochecknoglobals
 var clientset *kubernetes.Clientset
 
 func Init() error {
@@ -78,7 +78,10 @@ func GetPodResources() ([]*types.PodResources, error) { //nolint: funlen,cyclop,
 	results := make([]*types.PodResources, 0)
 
 	for _, pod := range pods.Items {
-		for _, container := range pod.Spec.Containers {
+		containers := pod.Spec.Containers
+		containers = append(containers, pod.Spec.InitContainers...)
+
+		for _, container := range containers {
 			item := types.PodResources{
 				PodName:       pod.Name,
 				PodTemplate:   pod.GenerateName,

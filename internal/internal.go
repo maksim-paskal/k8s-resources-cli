@@ -15,7 +15,6 @@ package internal
 import (
 	"bytes"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"sort"
 	"strconv"
@@ -119,7 +118,7 @@ func Run() error { //nolint:funlen,cyclop
 
 	const filePermission = 0o755
 
-	err = ioutil.WriteFile("result.txt", b.Bytes(), os.FileMode(filePermission))
+	err = os.WriteFile("result.txt", b.Bytes(), os.FileMode(filePermission))
 	if err != nil {
 		log.WithError(err).Error("error writing result to file")
 	}

@@ -29,7 +29,7 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-// nolint:gochecknoglobals
+//nolint:gochecknoglobals
 var recomendationCache = make(map[string]*types.Recomendations)
 
 func Get(pod *types.PodResources) (*types.Recomendations, error) { //nolint:funlen,cyclop

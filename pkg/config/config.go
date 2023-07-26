@@ -14,7 +14,6 @@ package config
 
 import (
 	"flag"
-	"io/ioutil"
 	"os"
 
 	"github.com/maksim-paskal/k8s-resources-cli/pkg/types"
@@ -83,7 +82,7 @@ func Load() error {
 		return nil
 	}
 
-	configByte, err := ioutil.ReadFile(*appConfig.ConfigFile)
+	configByte, err := os.ReadFile(*appConfig.ConfigFile)
 	if err != nil {
 		return errors.Wrapf(err, "error opening config %s", *appConfig.ConfigFile)
 	}

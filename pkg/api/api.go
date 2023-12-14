@@ -79,7 +79,10 @@ func GetPodResources() ([]*types.PodResources, error) { //nolint: funlen,cyclop,
 
 	for _, pod := range pods.Items {
 		containers := pod.Spec.Containers
-		containers = append(containers, pod.Spec.InitContainers...)
+
+		if *config.Get().InitContainers {
+			containers = append(containers, pod.Spec.InitContainers...)
+		}
 
 		for _, container := range containers {
 			item := types.PodResources{

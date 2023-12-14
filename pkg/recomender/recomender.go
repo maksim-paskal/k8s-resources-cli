@@ -171,6 +171,7 @@ func getMetrics(query string) (model.Vector, error) {
 			*config.Get().PrometheusUser,
 			promConfig.Secret(*config.Get().PrometheusPassword),
 			"",
+			"",
 			api.DefaultRoundTripper,
 		)
 	}

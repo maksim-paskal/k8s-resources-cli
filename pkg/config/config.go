@@ -42,6 +42,7 @@ type AppConfig struct {
 	PrometheusRetention  *string
 	Strategy             *string
 	GroupBy              *string
+	InitContainers       *bool
 }
 
 func (c *AppConfig) String() string {
@@ -61,6 +62,7 @@ var appConfig = &AppConfig{
 	KubeConfigFile:       flag.String("kubeconfig", os.Getenv("KUBECONFIG"), "kubeconfig path"),
 	Filter:               flag.String("filter", "", "golang filter expression"),
 	PodLabelSelector:     flag.String("podLabelSelector", "", "pod label selector"),
+	InitContainers:       flag.Bool("initContainers", true, "show init containers"),
 	ShowQoS:              flag.Bool("ShowQoS", false, "show QoS"),
 	ShowSafeToEvict:      flag.Bool("ShowSafeToEvict", false, "show Autoscaler safeToEvict"),
 	OOMKilled:            flag.Bool("OOMKilled", false, "show only if container OOMKilled"),

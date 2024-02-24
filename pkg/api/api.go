@@ -102,7 +102,7 @@ func GetPodResources() ([]*types.PodResources, error) { //nolint: funlen,cyclop,
 			podTemplateHash := pod.Labels["pod-template-hash"]
 
 			if len(podTemplateHash) > 0 {
-				podTemplateHash = fmt.Sprintf("%s-", podTemplateHash)
+				podTemplateHash += "-"
 				item.PodTemplate = strings.TrimSuffix(item.PodTemplate, podTemplateHash)
 			}
 

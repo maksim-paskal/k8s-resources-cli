@@ -5,6 +5,17 @@ issues:
 linters:
   enable-all: true
   disable:
+  # deprecated
+  - scopelint
+  - interfacer
+  - golint
+  - deadcode
+  - nosnakecase
+  - structcheck
+  - ifshort
+  - maligned
+  - varcheck
+  ############
   - exhaustivestruct
   - varnamelen
   - exhaustruct
